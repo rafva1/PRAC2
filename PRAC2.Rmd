@@ -1,0 +1,328 @@
+---
+title: "Practica 2: Limpieza y Analisis de Datos"
+author: "Rafael Valor Pérez"
+date: "24 de diciembre de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_libraries, include=FALSE}
+library(knitr)
+library(ggplot2)
+```
+
+# 1: Descripcion del dataset
+
+El dataset se ha descargado desde *Kaggle* (https://www.kaggle.com/uciml/red-wine-quality-cortez-et-al-2009), y contiene información sobre distintas variedades de vino tinto portugués llamado "Vinho Verde". El dataset tiene un total de 12 variables y 1599 observaciones. Veamos cuales es la descripción de las diferentes variables:
+
+* **fixed acidity**: Acidez fija del vino.Se refiere a la cantidad de ácido que no se evaporan.
+* **volatile acidity**: Acidez volátil del vino, o cantidad de ácido acético. Valores altos producen un sabor avinagrado.
+* **citric acid**: Acido cítrico. En pequeñas cantidades añade frescor y sabor al vino.
+* **residual sugar**: Azúcar residual, es la cantidad de azúcar que permanece en el vino una vez terminada la fermentación. Como mínimo suele haber un gramo de azúcar por litro.
+* **chlorides**: Cloruros, cantidad de sal en el vino.
+* **free sulfur dioxide**: Dióxido de azufre libre, previene el crecimiento de microbios asi como la oxidación del vino.
+* **total sulfur dioxide**: Dióxido de azufre total.
+* **density**: Densidad, suele ser similar a la del agua, y variará en funcion de la cantidad de alcohol y azúcar.
+* **pH**: Describe cómo de ácido es el vino en una escala de 0  a 14. La mayoría de vinos tienen un pH de entre 3 y 4.
+* **sulphates**: Sulfatos, es un aditivo del vino que influye en los niveles de dióxido de azufre.
+* **alcohol**: Porcentaje de alcohol que contiene el vino.
+* **quality**: Calidad del vino. Varía en una escala de 0 a 10.
+
+###¿Por qué es importante y qué pregunta/problema pretende responder?
+
+Se desea averiguar las variables mas influyentes en la calidad del vino. Podremos crear un modelo de regresión e ir cambiando los distintos valores en las variables para ver cómo  conseguir un vino de alta calidad.
+
+Este tipo de estudios pueden ser muy útiles en la industria vinícola, que mueve mucho dinero. También pueden servir a los sumillers o personal de hostelería para explicar a sus clientes qué cualidades tiene un determinado vino y de esta forma mejorar la experiencia del cliente.
+
+# 2: Integración y selección de los datos de interés a analizar
+
+A esta altura del analisis todos los datos parecen interesantes, sin tener más conocimiento sobre vinos, y sin haber hecho ningún test estadístico, no desecharemos ninguno de los atributos del dataset. 
+
+Posteriormente, si realizamos algún modelo de regresión podremos estudiar cómo afecta cada atributo a la calidad del vino, y si existen atributos que no influyen mucho, sí que podríamos estudiar eliminarlos.
+
+# 3: Limpieza de datos
+
+En primer lugar, vamos a cargar el csv en un dataframe, y mostraremos los primeros registros:
+
+```{r}
+wine <- read.csv2("winequality-red.csv", header=TRUE, sep=",")
+kable(head(wine))
+```
+
+Ahora Vamos a ver qué tipos asigna R a cada variable:
+
+```{r}
+tipos <- sapply(wine,class)
+kable(tipos)
+```
+
+Vamos a cambiar todas las variables de tipo factor por numeric:
+
+```{r}
+wine$fixed.acidity <- as.numeric( sub(",","\\.", wine$fixed.acidity))
+wine$volatile.acidity <- as.numeric( sub(",","\\.", wine$volatile.acidity))
+wine$citric.acid <- as.numeric( sub(",","\\.", wine$citric.acid))
+wine$residual.sugar <- as.numeric( sub(",","\\.", wine$residual.sugar))
+wine$chlorides <- as.numeric( sub(",","\\.", wine$chlorides))
+wine$free.sulfur.dioxide <- as.numeric( sub(",","\\.", wine$free.sulfur.dioxide))
+wine$total.sulfur.dioxide <- as.numeric( sub(",","\\.", wine$total.sulfur.dioxide))
+wine$density <- as.numeric( sub(",","\\.", wine$density))
+wine$pH <- as.numeric( sub(",","\\.", wine$pH))
+wine$sulphates <- as.numeric( sub(",","\\.", wine$sulphates))
+wine$alcohol <- as.numeric( sub(",","\\.", wine$alcohol))
+```
+
+```{r}
+tipos <- sapply(wine,class)
+kable(tipos)
+```
+
+### 3.1: ¿Los datos contienen ceros o elementos vacíos? ¿Cómo gestionarías cada uno de estos casos?
+
+Veamos mediante la funcion summary las variables que tienen ceros:
+
+```{r}
+kable(summary(wine))
+```
+
+Solo hay ceros en el atributo *citric acid*. Parece posible que algun vino tenga un cero en este atributo por lo tanto los cosnideraremos valores correctos.
+
+
+Ahora comprobamos si existen elementos vacíos:
+
+```{r}
+kable(sapply(wine, function(x) sum(is.na(x))))
+```
+
+No existen elementos vacíos, por tanto no hay que gestionar ningún caso, en caso de existir, podríamos o bien eliminar las filas con algún valor vacío, o reemplazar este valor empleando un algoritmo como el kNN.
+
+### 3.2: Identificación y tratamiento de valores extremos
+
+Vamos a realizarlos boxplot de todas las variables para visualizar si tenemos valores extremos:
+
+```{r}
+boxplot(wine$fixed.acidity, main="fixed.acidity")
+boxplot.stats(wine$fixed.acidity)$out
+boxplot(wine$volatile.acidity, main="volatile.acidity")
+boxplot.stats(wine$volatile.acidity)$out
+boxplot(wine$citric.acid, main="citric.acid")
+boxplot.stats(wine$citric.acid)$out
+boxplot(wine$residual.sugar, main="residual.sugar")
+boxplot.stats(wine$residual.sugar)$out
+boxplot(wine$chlorides, main="chlorides")
+boxplot.stats(wine$chlorides)$out
+boxplot(wine$free.sulfur.dioxide, main="free.sulfur.dioxide")
+boxplot.stats(wine$free.sulfur.dioxide)$out
+boxplot(wine$total.sulfur.dioxide, main="total.sulfur.dioxide")
+boxplot.stats(wine$total.sulfur.dioxide)$out
+boxplot(wine$density, main="density")
+boxplot.stats(wine$density)$out
+boxplot(wine$pH, main="pH")
+boxplot.stats(wine$pH)$out
+boxplot(wine$sulphates, main="sulphates")
+boxplot.stats(wine$sulphates)$out
+boxplot(wine$alcohol, main="alcohol")
+boxplot.stats(wine$alcohol)$out
+```
+
+Se observa que para algunos atributos encontramos bastantes valores extremos, sin embargo, no los vamos a eliminarde momento, pues ahora mismo no sabemos si se deben a errores con los instrumentos de medida, o son valores que se han medido correctamente.
+
+# 4: Análisis de los datos
+
+### 4.1: Selección de los grupos de datos que se quieren analizar/comparar (planificación de los análisis a aplicar)
+
+Veamos la distribución de la calidad del vino mediante un histograma:
+
+```{r}
+ggplot(wine, aes(x=quality)) + geom_bar()
+```
+
+Y la correlación entre las variables:
+
+```{r}
+library(GGally)
+ggcorr(wine, label = TRUE)
+```
+
+Vemos que la calidad del vino se distribuye de manera similar entre los vinos con calidad menor que 5 y los vinos con calidad mayor que 6, así que vamos a diferenciar ambos grupos creando dos sub data sets.
+
+Por otra parte, nos vamos a quedar solamente con las variables que están más correlacionadas con la calidad del vino, que viendo la representacion son el alcohol, los sulfatos, y la acidez volatil.
+
+```{r}
+wine.bad <- wine[wine$quality < 6,c("quality","alcohol","sulphates","volatile.acidity")]
+wine.good <- wine[wine$quality > 5,c("quality","alcohol","sulphates","volatile.acidity")]
+```
+
+### 4.2: Comprobación de la normalidad y homogeneidad de la varianza
+
+Ahora comprobaremos si las variables siguen una distribución normal, para ello usaremos una correción de la prueba de Kolmogorov-Smirnov, llamada la corrección de Lilliefors. Para las variables que concluyamos que no siguen una distribución normal, además mostraremos su gráfica Q-Q para verificar que el resultado es correcto:
+
+```{r}
+library(nortest)
+alpha = 0.05
+col.names = colnames(wine)
+for(i in 1:ncol(wine)){
+  p_val = lillie.test(wine[,i])$p.value
+  if(p_val>alpha){
+    cat(col.names[i])
+    cat(" Sigue una distribución normal")
+  }
+  else{
+    cat(col.names[i])
+    cat(" NO sigue una distribución normal")
+    qqnorm(wine[,i], main=col.names[i])
+    qqline(wine[,i])
+  }
+}
+```
+
+Homogeneidad de la varianza
+
+```{r}
+var.test(wine.bad$alcohol, wine.good$alcohol)
+```
+
+
+```{r}
+var.test(wine.bad$sulphates, wine.good$sulphates)
+```
+
+
+```{r}
+var.test(wine.bad$volatile.acidity, wine.good$volatile.acidity)
+```
+
+En los todos los casos obtenemos un p-valor inferior a 0,05, por tanto rechazamos la hipótesis nula y concluimos que no hay homogeneidad en las varianzas.
+
+### 4.3: Aplicación de pruebas estadísticas para comparar los grupos de datos
+
+#### 4.3.1: Modelo de regresion lineal:
+
+Veamos como seria un modelo de regresion lineal que pretenda predecir la calidad del vino en funcion de las variables alcohol,sulfatos y la acidez volatil.
+
+```{r}
+model <- lm(quality ~ alcohol + sulphates + volatile.acidity, data=wine)
+summary(model)
+```
+
+Tenemos un que el modelo es capaz de explicar el 34% de la variabilidad observada y un coeficiente de determinacion 0.3359. Este modelo no parece que sea un modelo con la suficiente calidad. 
+
+Todas las variables seleccionadas son significativas por lo tanto parecen bien elegidas. El modelo viene a decirnos que por cada grado que aumentamos del alcohol en el vino aumentamos un 0.31 la claidad del vino, por cada aumento de una unidad de la acidez la calidad del vino disminuira en 1.22. ypor cada aumento de la unidad de sulfatos aumenta un 0.68 la calidad del vino.
+
+#### 4.3.2: Contraste de hipótesis
+
+
+Comprobemos si los vinos que hemos calificados como buenos tienen más alcohol en media que los malos:
+
+```{r}
+t.test(
+  wine.bad$alcohol,
+  wine.good$alcohol,
+  alternative="greater"
+)
+```
+
+Rechazada la hipotesis nula, comprobamos que los vinos buenos tienen en media mayor procentaje de alcohol.
+
+Comprobemos si la media de los ácidos volátiles es inferior en los vinos calificados como buenos:
+
+```{r}
+t.test(
+  wine.bad$volatile.acidity,
+  wine.good$volatile.acidity,
+  alternative = "less"
+)
+```
+
+Rechazada la hipótesis nula, podemos decir que la media en los vinos buenos es menor.
+
+Ahora comprobaremos si los vinos calificados como buenos, tienen un nivel de sulfatos que es superior a 0,55:
+
+```{r}
+t.test(
+  wine.good$sulphates, 
+  mu=0.55,
+  alternative = "greater"
+)
+```
+
+No podemos rechazar en este caso la hipótesis nula, por tanto no podemos afirmar que el nivel de sulfatos sea superior a 0.55.
+
+#### 4.3.3: Modelo de regresión logistica
+
+Se desea evaluar la calidad predictiva de las variables del modelo de regresión lineal respecto a la predicción de que un vino sea bueno.
+
+Por tanto, evaluaremos la probabilidad de que un vino sea bueno. Para ello se aplicará un modelo de regresión logística, donde la variable depediente será una variable binaria que indicará si el vino es bueno. Se usará la muestra disponible para estimar el modelo con las mismas variables que en el modelo de regresión lineal.
+
+Crearemos una variable binaria (Q) que indique la condición de que el vino sea bueno, Q = 1, o que no lo sea , Q = 0. 
+
+Creamos la variable binaria y mostramos las primeras filas para comprobar el resultado:
+
+```{r}
+wine$Q<- ifelse(wine$quality >5, 1, 0)
+kable(head(wine[, c("quality","Q")]))
+```
+
+Creamos el modelo:
+
+```{r}
+modelo_REG = glm(Q ~ alcohol + sulphates + volatile.acidity, data = wine, family=binomial)
+summary(modelo_REG)
+```
+
+Todos los regresores tienen influencia significativa, podríamos utilizar este modelo para ver la probabilidad de que un vino sea bueno bajo determinadas circustancias:
+
+```{r}
+new = data.frame(alcohol=12, sulphates=1, volatile.acidity=0.8)
+predict(modelo_REG, new, type="response")
+```
+
+Según el modelo, las posibilidades de que un vino de estas características sea bueno es de un 84%.
+
+# 5: Representación de los resultados a partir de tablas y gráficas.
+
+Veamos como quedan representados los vinos buenos y los malos en funcion de las tres variables que hemos identificado como mas improtantes.
+
+Veamos en funcion de los sulfatos y alcohol.
+
+```{r}
+ggplot(wine, aes(x = alcohol, y = sulphates)) +
+    geom_point(aes(color = factor(Q)))
+
+```
+
+Observamos que los vinos de menos calidad se agrupan en la parte inferior izquierda del gráfico, es decir los vinos con pocos sulfatos y con poco alcohol son de baja calidad. Mientras que los vinos buenos tienen niveles mayores tanto de alcohol como de sulfatos.
+
+
+
+```{r}
+ggplot(wine, aes(x = sulphates, y = volatile.acidity)) +
+    geom_point(aes(color = factor(Q)))
+
+```
+
+Los vinos con poco nivel de sulfatos y alto nivel de acidez volatil son peores que los vinos con mayor nivel de sulfatos y menor acidez volatil.
+
+Veamos con respecto a la acidez volatil y el acohol:
+
+```{r}
+ggplot(wine, aes(x = alcohol, y = volatile.acidity)) +
+    geom_point(aes(color = factor(Q)))
+
+```
+
+Podemos comprobar que los vinos malos tienen una acidez volatil mayor que los vinos de mayor calidad.
+
+
+#6: Resolución del problema. A partir de los resultados obtenidos, ¿cuáles son las conclusiones? ¿Los resultados permiten responder al problema?
+
+Podemos resolver el problema tan solo de manera parcial. Aun asi las conclusiones obtenidas nos permite estar un paso mas cerca de la resolucion final del problema.
+
+Como conclusion principal hemos obtenido que al calidad del vino depende principalmente de las variables alcohol, sulfatos y acidez volatil. Todas las pruebas que hemosn realizado han venido a indicarnos esto. Los vinos de calidad superior presentan unos niveles tanto de alcohol como de sulfitos mas altos que los vinos de peor caalidad asi como una proporcion de acidez volatil menor.
+
+Debemos tener en cuenta que la variable calidad del vino es una variable que nos ha venido dada y que es subjetiva. Esto nos provoca que sea dificil la prediccion de esta calidad dsubjetiva en funcion de variables objetivas como son el resto que nos vienen dadas.
+
+
